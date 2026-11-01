@@ -1,8 +1,0 @@
-{
-  "appId": "fr.monmelimelo.app",
-  "appName": "Mon méli-mélo",
-  "webDir": "www",
-  "server": {
-    "androidScheme": "https"
-  }
-}
