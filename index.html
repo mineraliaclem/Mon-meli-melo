@@ -731,7 +731,7 @@ function medReminderView(){
  const list=db.medReminders||[];
  fab('addMedReminder()');
  return `<div class="muted" style="margin-bottom:16px">Une validation retire automatiquement la dose de la réserve de médicaments.</div>
- <button class="softbtn" style="margin-bottom:15px" onclick="enableMedNotifications()">Activer les rappels</button>
+ <button class="softbtn" style="margin-bottom:10px" onclick="enableMedNotifications()">Activer les rappels</button> <button class="softbtn" style="margin-bottom:10px" onclick="testNotif()">Tester dans 1 minute</button><div id="ntdiag" class="muted" style="margin-bottom:15px;white-space:pre-wrap"></div>
  ${list.length?list.map(r=>{
  const stock=db.stocks.find(x=>x.id===r.stockId);
  const done=r.lastDone===dateToday();
@@ -751,7 +751,7 @@ function scheduleNativeMeds(now){const LN=nativeNotif();if(!LN)return Promise.re
   const used=new Set();const list=[];
   (db.medReminders||[]).forEach(r=>{const st=db.stocks.find(x=>x.id===r.stockId);const [hh,mm]=String(r.time||'08:00').split(':');let id=_hashId(String(r.id));while(used.has(id))id++;used.add(id);
    list.push({id,title:'💊 '+(st?.name||'Médicament'),body:(r.dose||1)+' '+(st?.unit||'unité(s)')+' à prendre maintenant',channelId:'meds',schedule:{on:{hour:+hh||0,minute:+mm||0},allowWhileIdle:true}})});
-  if(list.length)await LN.schedule({notifications:list})}catch(e){}};
+  if(list.length)await LN.schedule({notifications:list})}catch(e){window._ntErr=String(e&&e.message||e)}};
  if(now)return run();_ntTimer=setTimeout(run,800);return Promise.resolve()}
 function enableMedNotifications(){
  const LN=nativeNotif();if(LN){(async()=>{try{let p=await LN.checkPermissions();if(p.display!=='granted')p=await LN.requestPermissions();if(p.display!=='granted'){showToast('Notifications refusées : autorise-les dans les réglages Android');return}
@@ -761,6 +761,16 @@ function enableMedNotifications(){
  if(Notification.permission==='granted'){showToast('Notifications autorisées');return}
  Notification.requestPermission().then(p=>showToast(p==='granted'?'Notifications autorisées':'Notifications non autorisées')).catch(()=>showToast('Autorisation impossible'));
 }
+async function testNotif(){const d=document.getElementById('ntdiag');const say=t=>{if(d)d.textContent=t};
+ const c=window.Capacitor;const LN=nativeNotif();
+ if(!LN){say('Plugin de notifications introuvable.\nCapacitor : '+(c?'présent':'absent')+'\nNatif : '+(c&&c.isNativePlatform?String(c.isNativePlatform()):'?')+'\nPlugins : '+(c&&c.Plugins?Object.keys(c.Plugins).join(', '):'aucun'));return}
+ try{let p=await LN.checkPermissions();say('Autorisation : '+p.display);if(p.display!=='granted'){p=await LN.requestPermissions();say('Autorisation : '+p.display);if(p.display!=='granted')return}
+  let ex='?';try{const e=await LN.checkExactNotificationSetting();ex=e.exact_alarm}catch(e){}
+  try{await LN.createChannel({id:'meds',name:'Rappels médicaments',description:'Rappels de prise de médicaments',importance:5,visibility:1,vibration:true})}catch(e){}
+  const at=new Date(Date.now()+60000);
+  await LN.schedule({notifications:[{id:99,title:'💊 Test de rappel',body:'Si tu vois ça, les rappels marchent.',channelId:'meds',schedule:{at,allowWhileIdle:true}}]});
+  const pend=await LN.getPending();
+  say('Test programmé à '+at.toLocaleTimeString('fr-FR')+'.\nAlarmes exactes : '+ex+'\nRappels en attente : '+(pend.notifications||[]).length+'\nFerme l’appli et attends 1 minute.')}catch(e){say('Erreur : '+(e&&e.message||e))}}
 function medReminderTimeField(value){
  const [h,m]=(value||'08:00').split(':');
  const hours=Array.from({length:24},(_,i)=>String(i).padStart(2,'0'));
