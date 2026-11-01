@@ -1,0 +1,9 @@
+{
+  "appId": "fr.melimelo.app",
+  "appName": "Mon méli-mélo",
+  "webDir": "www",
+  "server": {
+    "url": "https://mineraliaclem.github.io/Mon-meli-melo/",
+    "androidScheme": "https"
+  }
+}

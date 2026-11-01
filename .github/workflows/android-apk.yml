@@ -1,0 +1,57 @@
+name: Fabriquer l'appli Android
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'package.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/android-apk.yml'
+      - 'www/**'
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Installer
+        run: npm install
+      - name: Créer le projet Android
+        run: npx cap add android && npx cap sync android
+      - name: Permissions et icône
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>\n    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n    <application#' $M
+          python3 -m pip install pillow
+          python3 - <<'PY'
+          from PIL import Image
+          import os,shutil
+          src=Image.open('icon-512.png').convert('RGBA')
+          res='android/app/src/main/res'
+          shutil.rmtree(res+'/mipmap-anydpi-v26',ignore_errors=True)
+          for d,s in {'mdpi':48,'hdpi':72,'xhdpi':96,'xxhdpi':144,'xxxhdpi':192}.items():
+              p=f'{res}/mipmap-{d}'
+              os.makedirs(p,exist_ok=True)
+              im=src.resize((s,s),Image.LANCZOS)
+              for n in ('ic_launcher.png','ic_launcher_round.png','ic_launcher_foreground.png'):
+                  im.save(f'{p}/{n}')
+          PY
+      - name: Compiler
+        run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+      - name: Renommer
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Mon-meli-melo.apk
+      - name: Publier le fichier à télécharger
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android
+          name: Mon méli-mélo (Android)
+          body: Dernière version de l'appli Android. Télécharge Mon-meli-melo.apk et ouvre-le sur ton téléphone.
+          files: Mon-meli-melo.apk
+          make_latest: true
