@@ -727,17 +727,24 @@ new MutationObserver(()=>enhanceSelects()).observe(document.body,{childList:true
 function kindIcon(x){const k={house:'produit_menager',beauty:'creme_corps',meds:'medicament',fridge:'g_panier'}[x.kind];return k?CLAY_ICONS[k]:null}
 function picture(x,large=false){let pic=x.photo||clayIcon(x.name)||kindIcon(x)||CLAY_ICONS.g_panier||autoProductArt(x.name);return `<img class="${large?'recipepic':'thumb'}" src="${pic}" alt="Illustration de ${esc(x.name)}">`}
 function update(){save();render()}function render(){header();document.body.classList.toggle('volatile',!!window.STORE_VOLATILE);document.getElementById('floating').innerHTML='';let content=({home:homeView,courses:shoppingView,notes:notesView,fridge:()=>inventoryView('fridge'),meds:()=>inventoryView('meds'),medrem:medReminderView,wine:wineView,beauty:()=>inventoryView('beauty'),house:()=>inventoryView('house'),tasks:tasksView,routines:routinesView,recipes:recipesView,menu:menuView,gifts:giftsView}[page]||homeView)();document.getElementById('app').innerHTML=content;document.documentElement.style.setProperty('--green',db.theme||'#3d7165')}
+function icsEsc(s){return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\n/g,'\\n')}
+function exportMedIcs(){const list=db.medReminders||[];if(!list.length){showToast('Crée d’abord un rappel');return}
+ const t=new Date(),d=ymd(t).replace(/-/g,''),p=n=>String(n).padStart(2,'0'),stamp=t.getUTCFullYear()+p(t.getUTCMonth()+1)+p(t.getUTCDate())+'T'+p(t.getUTCHours())+p(t.getUTCMinutes())+'00Z';
+ const ev=list.map(r=>{const st=db.stocks.find(x=>x.id===r.stockId);const [hh,mm]=String(r.time||'08:00').split(':');const name=(st?.name||'Médicament');const txt='💊 '+name+' — '+r.dose+' '+(st?.unit||'unité(s)');
+  return ['BEGIN:VEVENT','UID:'+r.id+'@mon-meli-melo','DTSTAMP:'+stamp,'DTSTART:'+d+'T'+p(+hh||0)+p(+mm||0)+'00','DURATION:PT10M','RRULE:FREQ=DAILY','SUMMARY:'+icsEsc(txt),'DESCRIPTION:'+icsEsc('Rappel de médicament (Mon méli-mélo)'),'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+icsEsc(txt),'TRIGGER:PT0M','END:VALARM','END:VEVENT'].join('\r\n')}).join('\r\n');
+ const ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Mon meli-melo//FR\r\nCALSCALE:GREGORIAN\r\n'+ev+'\r\nEND:VCALENDAR\r\n';
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar'}));a.download='rappels-medicaments.ics';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);showToast('Fichier prêt : ouvre-le avec ton Agenda')}
 function medReminderView(){
  const list=db.medReminders||[];
  fab('addMedReminder()');
  return `<div class="muted" style="margin-bottom:16px">Une validation retire automatiquement la dose de la réserve de médicaments.</div>
- <button class="softbtn" style="margin-bottom:15px" onclick="enableMedNotifications()">Activer les notifications</button>
+ <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:15px"><button class="primary" onclick="exportMedIcs()">📅 Ajouter à mon agenda</button><button class="softbtn" onclick="enableMedNotifications()">Activer les notifications</button></div><div class="muted" style="font-size:13px;margin:-6px 0 14px">Pour des rappels fiables même appli fermée : ajoute-les à ton agenda. Ils se répètent chaque jour à l’heure choisie.</div>
  ${list.length?list.map(r=>{
  const stock=db.stocks.find(x=>x.id===r.stockId);
  const done=r.lastDone===dateToday();
  return `<div class="line"><div class="grow"><div class="name">${esc(stock?.name||'Médicament supprimé')}</div><div class="tiny">${esc(r.time)} · ${esc(r.dose)} ${esc(stock?.unit||'unité(s)')} · ${done?'Pris aujourd’hui':'À confirmer'}</div></div><button class="${done?'softbtn':'primary'}" onclick="takeMedReminder('${r.id}')" ${done?'disabled':''}>${done?'✓ Pris':'✓ Pris'}</button><button class="iconbtn" onclick="editMedReminder('${r.id}')">⋯</button></div>`
  }).join(''):blank('Aucun rappel. Appuie sur + pour en créer un.')}
- <p class="muted" style="font-size:12px;margin-top:20px">Les alertes automatiques fonctionnent lorsque cette page HTML est ouverte et que le navigateur autorise les notifications. Pour des rappels fiables en arrière-plan, il faudra installer une vraie application avec notifications programmées.</p>`;
+ <p class="muted" style="font-size:12px;margin-top:20px">Les alertes automatiques fonctionnent lorsque cette page HTML est ouverte et que le navigateur autorise les notifications. Pour des rappels fiables, utilise « Ajouter à mon agenda ». Si tu modifies un rappel, supprime l’ancien dans ton agenda avant de réimporter.</p>`;
 }
 function enableMedNotifications(){
  if(!('Notification' in window)){showToast('Notifications indisponibles dans ce navigateur');return}
