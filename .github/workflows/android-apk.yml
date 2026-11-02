@@ -34,6 +34,7 @@ jobs:
           from PIL import Image
           import os,shutil
           src=Image.open('icon-maskable.png').convert('RGBA')
+          core=src.crop((59,64,454,446))
           res='android/app/src/main/res'
           shutil.rmtree(res+'/mipmap-anydpi-v26',ignore_errors=True)
           os.makedirs(res+'/mipmap-anydpi-v26',exist_ok=True)
@@ -48,8 +49,9 @@ jobs:
                   im.save(f'{p}/{n}')
               f=int(s*108/48)
               fg=Image.new('RGBA',(f,f),(0,0,0,0))
-              k=int(f*0.60)
-              fg.paste(src.resize((k,k),Image.LANCZOS),((f-k)//2,(f-k)//2))
+              k=int(f*0.70)
+              c=core.resize((k,int(k*core.height/core.width)),Image.LANCZOS)
+              fg.paste(c,((f-c.width)//2,(f-c.height)//2),c)
               fg.save(f'{p}/ic_launcher_foreground.png')
           PY
       - name: Compiler
