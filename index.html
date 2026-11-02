@@ -758,8 +758,8 @@ function medReminderView(){
  <button class="softbtn" style="margin-bottom:10px" onclick="enableMedNotifications()">Activer les rappels</button> <button class="softbtn" style="margin-bottom:10px" onclick="testNotif()">Tester dans 1 minute</button><div id="ntdiag" class="muted" style="margin-bottom:15px;white-space:pre-wrap"></div>
  ${list.length?list.map(r=>{
  const stock=db.stocks.find(x=>x.id===r.stockId);
- const done=r.lastDone===dateToday();
- return `<div class="line"><div class="grow"><div class="name">${esc(stock?.name||'Médicament supprimé')}</div><div class="tiny">${esc(r.time)} · ${esc(r.dose)} ${esc(stock?.unit||'unité(s)')} · ${done?'Pris aujourd’hui':'À confirmer'}</div></div><button class="${done?'softbtn':'primary'}" onclick="takeMedReminder('${r.id}')" ${done?'disabled':''}>${done?'✓ Pris':'✓ Pris'}</button><button class="iconbtn" onclick="editMedReminder('${r.id}')">⋯</button></div>`
+ const done=r.lastDone===dateToday(),skip=!done&&r.lastSkipped===dateToday();
+ return `<div class="line"><div class="grow"><div class="name">${esc(stock?.name||'Médicament supprimé')}</div><div class="tiny">${esc(r.time)} · ${esc(r.dose)} ${esc(stock?.unit||'unité(s)')} · ${done?'Pris aujourd’hui':skip?'Ignoré aujourd’hui':'À confirmer'}</div></div><button class="${done?'softbtn':'primary'}" onclick="takeMedReminder('${r.id}')" ${done?'disabled':''}>${done?'✓ Pris':'✓ Pris'}</button>${done||skip?'':`<button class="iconbtn" title="Ignorer" aria-label="Ignorer" onclick="skipMedReminder('${r.id}')">✕</button>`}<button class="iconbtn" onclick="editMedReminder('${r.id}')">⋯</button></div>`
  }).join(''):blank('Aucun rappel. Appuie sur + pour en créer un.')}
  <p class="muted" style="font-size:12px;margin-top:20px">Dans l’appli Android, les rappels sont programmés dans le téléphone et sonnent même appli fermée. Dans le navigateur, ils ne fonctionnent que si la page est ouverte.</p>`;
 }
@@ -767,14 +767,19 @@ function medReminderView(){
 /* ===== Rappels médicaments natifs (appli Android) : programmés dans Android, fonctionnent appli fermée ===== */
 function nativeNotif(){const c=window.Capacitor;try{return c&&c.isNativePlatform&&c.isNativePlatform()&&c.Plugins&&c.Plugins.LocalNotifications||null}catch(e){return null}}
 let _ntTimer=null;
+async function regMedActions(LN){try{await LN.registerActionTypes({types:[{id:'MED',actions:[{id:'taken',title:'✓ Pris'},{id:'skip',title:'Ignoré'}]}]})}catch(e){}}
+function skipMedReminder(id){const r=(db.medReminders||[]).find(x=>x.id===id);if(!r)return;if(r.lastDone===dateToday()){showToast('Déjà pris aujourd’hui');return}r.lastSkipped=dateToday();update();showToast('Prise ignorée')}
+function onMedAction(ev){try{const a=ev&&ev.actionId,x=(ev&&ev.notification&&ev.notification.extra)||{};if(x.test){showToast(a==='taken'?'Test : bouton « Pris » reçu ✓':a==='skip'?'Test : bouton « Ignoré » reçu ✓':'Test : notification ouverte');return}
+ if(!x.rid)return;if(a==='taken'){navigate('medrem');takeMedReminder(x.rid)}else if(a==='skip'){navigate('medrem');skipMedReminder(x.rid)}else navigate('medrem')}catch(e){}}
+(function(){const LN=nativeNotif();if(LN&&LN.addListener){try{LN.addListener('localNotificationActionPerformed',onMedAction);regMedActions(LN)}catch(e){}}})();
 function _hashId(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return 100000+Math.abs(h)%900000}
 function scheduleNativeMeds(now){const LN=nativeNotif();if(!LN)return Promise.resolve();clearTimeout(_ntTimer);
  const run=async()=>{try{const perm=await LN.checkPermissions();if(perm.display!=='granted')return;
   try{await LN.createChannel({id:'meds',name:'Rappels médicaments',description:'Rappels de prise de médicaments',importance:5,visibility:1,vibration:true})}catch(e){}
-  const pend=await LN.getPending();const mine=(pend.notifications||[]).filter(n=>n.id>=100000).map(n=>({id:n.id}));if(mine.length)await LN.cancel({notifications:mine});
+  await regMedActions(LN);const pend=await LN.getPending();const mine=(pend.notifications||[]).filter(n=>n.id>=100000).map(n=>({id:n.id}));if(mine.length)await LN.cancel({notifications:mine});
   const used=new Set();const list=[];
   (db.medReminders||[]).forEach(r=>{const st=db.stocks.find(x=>x.id===r.stockId);const [hh,mm]=String(r.time||'08:00').split(':');let id=_hashId(String(r.id));while(used.has(id))id++;used.add(id);
-   list.push({id,title:'💊 '+(st?.name||'Médicament'),body:(r.dose||1)+' '+(st?.unit||'unité(s)')+' à prendre maintenant',channelId:'meds',schedule:{on:{hour:+hh||0,minute:+mm||0},allowWhileIdle:true}})});
+   list.push({id,title:'💊 '+(st?.name||'Médicament'),body:(r.dose||1)+' '+(st?.unit||'unité(s)')+' à prendre maintenant',channelId:'meds',actionTypeId:'MED',extra:{rid:r.id},schedule:{on:{hour:+hh||0,minute:+mm||0},allowWhileIdle:true}})});
   if(list.length)await LN.schedule({notifications:list})}catch(e){window._ntErr=String(e&&e.message||e)}};
  if(now)return run();_ntTimer=setTimeout(run,800);return Promise.resolve()}
 function enableMedNotifications(){
@@ -791,8 +796,8 @@ async function testNotif(){const d=document.getElementById('ntdiag');const say=t
  try{let p=await LN.checkPermissions();say('Autorisation : '+p.display);if(p.display!=='granted'){p=await LN.requestPermissions();say('Autorisation : '+p.display);if(p.display!=='granted')return}
   let ex='?';try{const e=await LN.checkExactNotificationSetting();ex=e.exact_alarm}catch(e){}
   try{await LN.createChannel({id:'meds',name:'Rappels médicaments',description:'Rappels de prise de médicaments',importance:5,visibility:1,vibration:true})}catch(e){}
-  const at=new Date(Date.now()+60000);
-  await LN.schedule({notifications:[{id:99,title:'💊 Test de rappel',body:'Si tu vois ça, les rappels marchent.',channelId:'meds',schedule:{at,allowWhileIdle:true}}]});
+  await regMedActions(LN);const at=new Date(Date.now()+60000);
+  await LN.schedule({notifications:[{id:99,title:'💊 Test de rappel',body:'Si tu vois ça, les rappels marchent.',channelId:'meds',actionTypeId:'MED',extra:{test:1},schedule:{at,allowWhileIdle:true}}]});
   const pend=await LN.getPending();
   say('Test programmé à '+at.toLocaleTimeString('fr-FR')+'.\nAlarmes exactes : '+ex+'\nRappels en attente : '+(pend.notifications||[]).length+'\nFerme l’appli et attends 1 minute.')}catch(e){say('Erreur : '+(e&&e.message||e))}}
 function medReminderTimeField(value){
