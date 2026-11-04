@@ -948,6 +948,7 @@ function routineRemaining(r){let last=r.history?.at(-1)||r.created||dateToday();
  kitchen:'<path d="M18 30h44v28a14 14 0 0 1-14 14H32a14 14 0 0 1-14-14z" fill="#b7d4c5"/><path d="M16 30h48" stroke="#47796a" stroke-width="5"/><path d="M28 19v-8m12 8v-8m12 8v-8" stroke="#e2aa87" stroke-width="4" stroke-linecap="round"/>',
  health:'<rect x="18" y="23" width="44" height="43" rx="9" fill="#e9b9b1"/><path d="M40 33v23m-11-12h22" stroke="#fff" stroke-width="8" stroke-linecap="round"/>',
  sport:'<rect x="17" y="34" width="46" height="14" rx="7" fill="#92c6b4"/><rect x="12" y="28" width="10" height="26" rx="4" fill="#d6a58d"/><rect x="58" y="28" width="10" height="26" rx="4" fill="#d6a58d"/>',
+ rug:'<path d="M20 22h40l8 40H12z" fill="#c9645a"/><path d="M24 27h32l6 30H18z" fill="#f1dcc4"/><path d="M29 32h22l4 20H25z" fill="#8fbfae"/><circle cx="40" cy="42" r="5" fill="#c9645a"/><path d="M14 66v7m8-7v7m8-7v7m8-7v7m8-7v7m8-7v7m8-7v7" stroke="#e9cfa8" stroke-width="2.5" stroke-linecap="round"/>',
  clock:'<circle cx="40" cy="42" r="27" fill="#d7e9df" stroke="#6b9e8d" stroke-width="5"/><path d="M40 26v17l12 8" stroke="#386e60" stroke-width="5" stroke-linecap="round" fill="none"/>',
  book:'<path d="M13 20q15-6 27 3 12-9 27-3v43q-15-6-27 3-12-9-27-3z" fill="#eac8b8" stroke="#b88877" stroke-width="2"/><path d="M40 23v43" stroke="#fff" stroke-width="3"/>',
  jewelry:'<path d="M19 40a21 21 0 1 0 42 0a21 21 0 1 0-42 0" fill="none" stroke="#e5b58b" stroke-width="8"/><path d="M32 19l8-11 8 11-8 9z" fill="#c2d9e9" stroke="#85aebc" stroke-width="2"/>',
@@ -965,7 +966,7 @@ function routineRemaining(r){let last=r.history?.at(-1)||r.created||dateToday();
 function routineArt(name){
  const n=String(name||'').toLowerCase();
  if(/serviette|peignoir|torchon|gant de toilette|essuie/.test(n)&&typeof CLAY_ICONS!=='undefined'&&CLAY_ICONS.serviette)return CLAY_ICONS.serviette;
- const terms=[['salle de bain','clean'],['ménage','clean'],['nettoy','clean'],['lessive','laundry'],['linge','laundry'],['drap','bed'],['lit','bed'],['arros','plant'],['plante','plant'],['poubelle','trash'],['cuisine','kitchen'],['vaisselle','kitchen'],['sport','sport'],['médec','health'],['médic','health'],['vitamine','health'],['dent','health'],['douche','beauty'],['cheveux','beauty'],['lecture','book'],['lire','book']];
+ const terms=[['tapis','rug'],['carpette','rug'],['paillasson','rug'],['salle de bain','clean'],['ménage','clean'],['nettoy','clean'],['lessive','laundry'],['linge','laundry'],['drap','bed'],['lit','bed'],['arros','plant'],['plante','plant'],['poubelle','trash'],['cuisine','kitchen'],['vaisselle','kitchen'],['sport','sport'],['médec','health'],['médic','health'],['vitamine','health'],['dent','health'],['douche','beauty'],['cheveux','beauty'],['lecture','book'],['lire','book']];
  return miniArtSvg((terms.find(([k])=>n.includes(k))||[null,'clock'])[1]);
 }
 function routinesView(){
