@@ -1156,10 +1156,25 @@ let shoppingPhotoURL='';
 let _photoItems=[];
 const DESTS=[['Frigo','🧊 Frigo'],['Congélateur','❄️ Congélateur'],['Placards','🥫 Placards'],['beauty','🧴 Beauté & Hygiène'],['house','🧽 Produits ménagers'],['meds','💊 Médicaments']];
 const NUMW={un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10,douze:12};
-function localParse(text){return String(text).split(/[,;\n]+|\s+et\s+|\s+puis\s+/i).map(x=>x.trim()).filter(Boolean).map(p=>{let qty=1,unit='unité(s)';let m=p.match(/^(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l|cl)?\b\s*(.*)$/i);let rest=p;
- if(m){qty=Number(m[1].replace(',','.'))||1;if(m[2]){const u=m[2].toLowerCase();unit=u==='l'?'L':u==='cl'?'ml':u;if(u==='cl')qty*=10}rest=m[3]}
- else{const w=p.split(/\s+/)[0].toLowerCase();if(NUMW[w]){qty=NUMW[w];rest=p.slice(w.length).trim()}}
- rest=rest.replace(/^(?:x\s+)?(?:(?:paquets?|boites?|boîtes?|pots?|bouteilles?|packs?|barquettes?|sachets?|tablettes?)\s+(?:de|d['’])\s*)/i,'').replace(/^(?:(?:du|de la|des|de|le|la|les)\s+|(?:de l|d|l)['’]\s*)/i,'').trim();
+const _CONT=/^(paquets?|bo[iî]tes?|pots?|bouteilles?|packs?|barquettes?|sachets?|tablettes?|plaquettes?|tubes?|flacons?|briques?|canettes?|rouleaux?|bocaux?|bocal|conserves?|kg|kilos?|kilogrammes?|g|grammes?|gr|ml|cl|l|litres?|tranches?|bottes?|lots?|barres?|filets?|pi[eè]ces?|douzaines?|cartons?|boutes?)$/i;
+function _autoSplit(text){const toks=String(text).replace(/\s+/g,' ').trim().split(' ');const out=[];
+ const isQ=t=>/^\d+(?:[.,]\d+)?$/.test(t)||(typeof NUMW!=='undefined'&&Object.prototype.hasOwnProperty.call(NUMW,t.toLowerCase())&&!/^(demi)$/i.test(t))||/^quelques$/i.test(t);
+ for(let k=0;k<toks.length;k++){const t=toks[k],l=t.toLowerCase(),p=k?toks[k-1].toLowerCase().replace(/[,;.]$/,''):'';let cut=false;
+  if(k&&!/[,;]$/.test(toks[k-1])){
+   if(isQ(l)&&!/^(de|d['’]|à|au|aux|avec|sans|pour|en|et)$/.test(p)&&!isQ(p))cut=true;
+   else if((l==='du'||l==='des'||(l==='de'&&/^(la|l['’].*)$/i.test((toks[k+1]||'').toLowerCase()))||/^l['’]/.test(l))&&!_CONT.test(p)&&!/^(de|d['’]|du|des|à|au|aux|avec|sans|pour|en|et|la|le|les)$/.test(p)&&!isQ(p))cut=true}
+  out.push((cut?', ':(k?' ':''))+t)}
+ return out.join('')}
+function localParse(text){return _autoSplit(text).split(/(?:(?<!\d),|,(?!\d)|[;\n])+|\s+et\s+|\s+puis\s+/i).map(x=>x.trim()).filter(Boolean).map(p=>{let qty=1,unit='unité(s)',rest=p;
+ const UR=/^(kilogrammes?|kilos?|kg|grammes?|gr|g|millilitres?|ml|centilitres?|cl|litres?|l)(?![a-zà-ÿ'’])\s*/i;
+ const setUnit=(u)=>{u=u.toLowerCase();if(/^(kg|kilo)/.test(u))unit='kg';else if(/^(g$|gr|gramme)/.test(u))unit='g';else if(/^(ml|millilit)/.test(u))unit='ml';else if(/^(cl|centilit)/.test(u)){unit='ml';qty*=10}else unit='L'};
+ let m=p.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+ if(m){qty=Number(m[1].replace(',','.'))||1;rest=m[2]}
+ else{const w=p.split(/\s+/)[0].toLowerCase();if(typeof NUMW!=='undefined'&&NUMW[w]){qty=NUMW[w];rest=p.slice(w.length).trim()}else if(/^quelques$/.test(w)){qty=3;rest=p.slice(w.length).trim()}if(qty>1&&/^cents?\b/i.test(rest)){qty*=100;rest=rest.replace(/^cents?\s*/i,'')}}
+ const um=rest.match(UR);if(um&&rest.length>um[0].length){setUnit(um[1]);rest=rest.slice(um[0].length)}
+ rest=rest.replace(/^(?:x\s+)?(?:(?:paquets?|bo[iî]tes?|pots?|bouteilles?|packs?|barquettes?|sachets?|tablettes?|plaquettes?|tubes?|flacons?|briques?|canettes?|bocaux?|bocal|rouleaux?)\s+(?:de|d['’])\s*)/i,'');
+ for(let n=0;n<3;n++)rest=rest.replace(/^(?:de l['’]|d['’]|l['’]|du |de la |des |de |le |la |les |un |une )\s*/i,'');
+ rest=rest.trim();
  let dest=guessStore(rest);if(/\b(bo[iî]tes?|conserves?)\b/i.test(p)&&dest==='Frigo')dest='Placards';return rest?{on:true,name:rest.charAt(0).toUpperCase()+rest.slice(1),qty:String(qty).replace('.',','),unit,dest}:null}).filter(Boolean)}
 function photoRows(){const u=['unité(s)','g','kg','ml','L'];return _photoItems.map((it,i)=>`<div class="photo-row"><input type="checkbox" class="check" data-k="on" data-i="${i}" ${it.on?'checked':''}><input type="text" data-k="name" data-i="${i}" value="${esc(it.name)}" aria-label="Nom"><input type="text" inputmode="decimal" data-k="qty" data-i="${i}" value="${esc(it.qty)}" aria-label="Quantité" class="photo-qty"><select data-k="unit" data-i="${i}">${u.map(x=>`<option ${x===it.unit?'selected':''}>${x}</option>`).join('')}</select><select data-k="dest" data-i="${i}" class="photo-dest">${DESTS.map(([v,l])=>`<option value="${v}" ${v===it.dest?'selected':''}>${l}</option>`).join('')}</select></div>`).join('')}
 function photoSync(){document.querySelectorAll('#photo-list [data-k]').forEach(el=>{const it=_photoItems[+el.dataset.i];if(!it)return;const k=el.dataset.k;it[k]=k==='on'?el.checked:el.value})}
