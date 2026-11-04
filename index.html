@@ -1252,7 +1252,8 @@ function locIcon(l){return {Frigo:'🧊','Congélateur':'❄️',Placards:'🥫'
 function dests(){return [...locs().map(l=>[l,locIcon(l)+' '+l]),['beauty','🧴 Beauté & Hygiène'],['house','🧽 Produits ménagers'],['meds','💊 Médicaments']]}
 const NUMW={un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10,douze:12};
 const _CONT=/^(paquets?|bo[iî]tes?|pots?|bouteilles?|packs?|barquettes?|sachets?|tablettes?|plaquettes?|tubes?|flacons?|briques?|canettes?|rouleaux?|bocaux?|bocal|conserves?|kg|kilos?|kilogrammes?|g|grammes?|gr|ml|cl|l|litres?|tranches?|bottes?|lots?|barres?|filets?|pi[eè]ces?|douzaines?|cartons?|boutes?)$/i;
-function _autoSplit(text){return String(text).split(/\r?\n+/).map(_autoSplit1).filter(Boolean).join('\n')}
+function _autoSplit(text){const lines=String(text).split(/\r?\n+/).map(l=>l.trim()).filter(Boolean);return lines.length>1?lines.join('\n'):lines.map(_autoSplit1).join('\n')}
+function _trailQty(p){const lead=p.split(/\s+/)[0].toLowerCase();if(/^\d/.test(p)||(typeof NUMW!=='undefined'&&NUMW[lead])||/^quelques$/.test(lead))return p;const C='(?:pi[èe]ces?|unit[ée]s?|paquets?|bo[iî]tes?|pots?|bouteilles?|packs?|barquettes?|sachets?|tablettes?|plaquettes?|tubes?|flacons?|briques?|canettes?|bocaux?|bocal|rouleaux?)';let m=p.match(/^(.*?\S)\s+(?:x|×)\s*(\d+)$/i)||p.match(new RegExp('^(.*?[a-zà-ÿ\'’])\\s+(\\d+)\\s*'+C+'$','i'))||p.match(/^(.*?[a-zà-ÿ'’])\s+(\d{1,2})$/i);return m&&Number(m[2])<=99?m[2]+' '+m[1]:p}
 function _autoSplit1(text){const toks=String(text).replace(/\s+/g,' ').trim().split(' ');const out=[];
  const isQ=t=>/^\d+(?:[.,]\d+)?$/.test(t)||(typeof NUMW!=='undefined'&&Object.prototype.hasOwnProperty.call(NUMW,t.toLowerCase())&&!/^(demi)$/i.test(t))||/^quelques$/i.test(t);
  for(let k=0;k<toks.length;k++){const t=toks[k],l=t.toLowerCase(),p=k?toks[k-1].toLowerCase().replace(/[,;.]$/,''):'';let cut=false;
@@ -1261,7 +1262,7 @@ function _autoSplit1(text){const toks=String(text).replace(/\s+/g,' ').trim().sp
    else if((l==='du'||l==='des'||(l==='de'&&/^(la|l['’].*)$/i.test((toks[k+1]||'').toLowerCase()))||/^l['’]/.test(l))&&!_CONT.test(p)&&!/^(de|d['’]|du|des|à|au|aux|avec|sans|pour|en|et|la|le|les)$/.test(p)&&!isQ(p))cut=true}
   out.push((cut?', ':(k?' ':''))+t)}
  return out.join('')}
-function localParse(text){return _autoSplit(text).split(/(?:(?<!\d),|,(?!\d)|[;\n])+|\s+et\s+|\s+puis\s+/i).map(x=>x.trim()).filter(Boolean).map(p=>{let qty=1,unit='unité(s)',rest=p;
+function localParse(text){return _autoSplit(text).split(/(?:(?<!\d),|,(?!\d)|[;\n])+|\s+et\s+|\s+puis\s+/i).map(x=>x.trim()).filter(Boolean).map(p=>{p=_trailQty(p);let qty=1,unit='unité(s)',rest=p;
  const UR=/^(kilogrammes?|kilos?|kg|grammes?|gr|g|millilitres?|ml|centilitres?|cl|litres?|l)(?![a-zà-ÿ'’])\s*/i;
  const setUnit=(u)=>{u=u.toLowerCase();if(/^(kg|kilo)/.test(u))unit='kg';else if(/^(g$|gr|gramme)/.test(u))unit='g';else if(/^(ml|millilit)/.test(u))unit='ml';else if(/^(cl|centilit)/.test(u)){unit='ml';qty*=10}else unit='L'};
  let m=p.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
