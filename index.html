@@ -1252,7 +1252,8 @@ function locIcon(l){return {Frigo:'🧊','Congélateur':'❄️',Placards:'🥫'
 function dests(){return [...locs().map(l=>[l,locIcon(l)+' '+l]),['beauty','🧴 Beauté & Hygiène'],['house','🧽 Produits ménagers'],['meds','💊 Médicaments']]}
 const NUMW={un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10,douze:12};
 const _CONT=/^(paquets?|bo[iî]tes?|pots?|bouteilles?|packs?|barquettes?|sachets?|tablettes?|plaquettes?|tubes?|flacons?|briques?|canettes?|rouleaux?|bocaux?|bocal|conserves?|kg|kilos?|kilogrammes?|g|grammes?|gr|ml|cl|l|litres?|tranches?|bottes?|lots?|barres?|filets?|pi[eè]ces?|douzaines?|cartons?|boutes?)$/i;
-function _autoSplit(text){const toks=String(text).replace(/\s+/g,' ').trim().split(' ');const out=[];
+function _autoSplit(text){return String(text).split(/\r?\n+/).map(_autoSplit1).filter(Boolean).join('\n')}
+function _autoSplit1(text){const toks=String(text).replace(/\s+/g,' ').trim().split(' ');const out=[];
  const isQ=t=>/^\d+(?:[.,]\d+)?$/.test(t)||(typeof NUMW!=='undefined'&&Object.prototype.hasOwnProperty.call(NUMW,t.toLowerCase())&&!/^(demi)$/i.test(t))||/^quelques$/i.test(t);
  for(let k=0;k<toks.length;k++){const t=toks[k],l=t.toLowerCase(),p=k?toks[k-1].toLowerCase().replace(/[,;.]$/,''):'';let cut=false;
   if(k&&!/[,;]$/.test(toks[k-1])){
