@@ -54,6 +54,8 @@ jobs:
               fg.paste(c,((f-c.width)//2,(f-c.height)//2),c)
               fg.save(f'{p}/ic_launcher_foreground.png')
           PY
+      - name: Icône de notification
+        run: cp -r android-res/. android/app/src/main/res/
       - name: Clé de signature fixe
         run: mkdir -p ~/.android && cp android-signing/debug.keystore ~/.android/debug.keystore
       - name: Compiler

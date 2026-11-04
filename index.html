@@ -782,7 +782,7 @@ function scheduleNativeMeds(now){const LN=nativeNotif();if(!LN)return Promise.re
   await regMedActions(LN);const pend=await LN.getPending();const mine=(pend.notifications||[]).filter(n=>n.id>=100000).map(n=>({id:n.id}));if(mine.length)await LN.cancel({notifications:mine});
   const used=new Set();const list=[];
   (db.medReminders||[]).forEach(r=>{const st=db.stocks.find(x=>x.id===r.stockId);const [hh,mm]=String(r.time||'08:00').split(':');let id=_hashId(String(r.id));while(used.has(id))id++;used.add(id);
-   list.push({id,title:'💊 '+(st?.name||'Médicament'),body:(r.dose||1)+' '+(st?.unit||'unité(s)')+' à prendre maintenant',channelId:'meds',actionTypeId:'MED',extra:{rid:r.id},schedule:{on:{hour:+hh||0,minute:+mm||0},allowWhileIdle:true}})});
+   list.push({id,title:'💊 '+(st?.name||'Médicament'),body:(r.dose||1)+' '+(st?.unit||'unité(s)')+' à prendre maintenant',channelId:'meds',smallIcon:'ic_stat_pill',iconColor:'#3D7165',actionTypeId:'MED',extra:{rid:r.id},schedule:{on:{hour:+hh||0,minute:+mm||0},allowWhileIdle:true}})});
   if(list.length)await LN.schedule({notifications:list})}catch(e){window._ntErr=String(e&&e.message||e)}};
  if(now)return run();_ntTimer=setTimeout(run,800);return Promise.resolve()}
 function enableMedNotifications(){
@@ -800,7 +800,7 @@ async function testNotif(){const d=document.getElementById('ntdiag');const say=t
   let ex='?';try{const e=await LN.checkExactNotificationSetting();ex=e.exact_alarm}catch(e){}
   try{await LN.createChannel({id:'meds',name:'Rappels médicaments',description:'Rappels de prise de médicaments',importance:5,visibility:1,vibration:true})}catch(e){}
   await regMedActions(LN);const at=new Date(Date.now()+60000);
-  await LN.schedule({notifications:[{id:99,title:'💊 Test de rappel',body:'Si tu vois ça, les rappels marchent.',channelId:'meds',actionTypeId:'MED',extra:{test:1},schedule:{at,allowWhileIdle:true}}]});
+  await LN.schedule({notifications:[{id:99,title:'💊 Test de rappel',body:'Si tu vois ça, les rappels marchent.',channelId:'meds',smallIcon:'ic_stat_pill',iconColor:'#3D7165',actionTypeId:'MED',extra:{test:1},schedule:{at,allowWhileIdle:true}}]});
   const pend=await LN.getPending();
   say('Test programmé à '+at.toLocaleTimeString('fr-FR')+'.\nAlarmes exactes : '+ex+'\nRappels en attente : '+(pend.notifications||[]).length+'\nFerme l’appli et attends 1 minute.')}catch(e){say('Erreur : '+(e&&e.message||e))}}
 function medReminderTimeField(value){

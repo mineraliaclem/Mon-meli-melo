@@ -5,5 +5,11 @@
   "server": {
     "url": "https://mineraliaclem.github.io/Mon-meli-melo/",
     "androidScheme": "https"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_pill",
+      "iconColor": "#3D7165"
+    }
   }
 }
