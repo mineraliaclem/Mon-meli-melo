@@ -793,11 +793,12 @@ function medReminderView(){
 /* ===== Rappels médicaments natifs (appli Android) : programmés dans Android, fonctionnent appli fermée ===== */
 function nativeNotif(){const c=window.Capacitor;try{return c&&c.isNativePlatform&&c.isNativePlatform()&&c.Plugins&&c.Plugins.LocalNotifications||null}catch(e){return null}}
 let _ntTimer=null;
-async function regMedActions(LN){try{await LN.registerActionTypes({types:[{id:'MED',actions:[{id:'taken',title:'✓ Pris'},{id:'skip',title:'Ignoré'}]},{id:'TASK',actions:[{id:'tdone',title:'✓ Fait'},{id:'tlater',title:'Dans 1 h'}]}]})}catch(e){}}
+async function regMedActions(LN){try{await LN.registerActionTypes({types:[{id:'MED',actions:[{id:'taken',title:'✓ Pris',foreground:false},{id:'skip',title:'Ignoré',foreground:false}]},{id:'TASK',actions:[{id:'tdone',title:'✓ Fait',foreground:false},{id:'tlater',title:'Dans 1 h',foreground:false}]}]})}catch(e){}}
 function skipMedReminder(id){const r=(db.medReminders||[]).find(x=>x.id===id);if(!r)return;if(r.lastDone===dateToday()){showToast('Déjà pris aujourd’hui');return}r.lastSkipped=dateToday();update();showToast('Prise ignorée')}
-function onMedAction(ev){try{const a=ev&&ev.actionId,x=(ev&&ev.notification&&ev.notification.extra)||{};if(x.test){showToast(a==='taken'?'Test : bouton « Pris » reçu ✓':a==='skip'?'Test : bouton « Ignoré » reçu ✓':'Test : notification ouverte');return}
- if(x.tid){const t=db.tasks.find(k=>k.id===x.tid);navigate('tasks');if(t){if(a==='tdone'){t.done=true;t.rdate='';t.rtime='';update();showToast('Tâche faite ✓')}else if(a==='tlater'){const d=new Date(Date.now()+3600000);t.rdate=ymd(d);t.rtime=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');update();showToast('Rappel repoussé d’1 h')}}return}
- if(!x.rid)return;if(a==='taken'){navigate('medrem');takeMedReminder(x.rid)}else if(a==='skip'){navigate('medrem');skipMedReminder(x.rid)}else navigate('medrem')}catch(e){}}
+function bgAfter(){setTimeout(()=>{try{Capacitor.Plugins.App.minimizeApp()}catch(e){}},700)}
+function onMedAction(ev){try{const a=ev&&ev.actionId,x=(ev&&ev.notification&&ev.notification.extra)||{};if(x.test){if(a==='taken'||a==='skip')bgAfter();showToast(a==='taken'?'Test : bouton « Pris » reçu ✓':a==='skip'?'Test : bouton « Ignoré » reçu ✓':'Test : notification ouverte');return}
+ if(x.tid){const t=db.tasks.find(k=>k.id===x.tid);if(a!=='tdone'&&a!=='tlater')navigate('tasks');else bgAfter();if(t){if(a==='tdone'){t.done=true;t.rdate='';t.rtime='';update();showToast('Tâche faite ✓')}else if(a==='tlater'){const d=new Date(Date.now()+3600000);t.rdate=ymd(d);t.rtime=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');update();showToast('Rappel repoussé d’1 h')}}return}
+ if(!x.rid)return;if(a==='taken'){takeMedReminder(x.rid);bgAfter()}else if(a==='skip'){skipMedReminder(x.rid);bgAfter()}else navigate('medrem')}catch(e){}}
 (function(){const LN=nativeNotif();if(LN&&LN.addListener){try{LN.addListener('localNotificationActionPerformed',onMedAction);regMedActions(LN)}catch(e){}}})();
 function _hashId(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return 100000+Math.abs(h)%900000}
 function scheduleNativeMeds(now){const LN=nativeNotif();if(!LN)return Promise.resolve();clearTimeout(_ntTimer);
