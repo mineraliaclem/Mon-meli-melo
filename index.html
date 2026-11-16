@@ -804,21 +804,23 @@ function _hashId(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|
 function scheduleNativeMeds(now){const LN=nativeNotif();if(!LN)return Promise.resolve();clearTimeout(_ntTimer);
  const run=async()=>{try{const perm=await LN.checkPermissions();if(perm.display!=='granted')return;
   try{await LN.createChannel({id:'meds',name:'Rappels médicaments',description:'Rappels de prise de médicaments',importance:5,visibility:1,vibration:true})}catch(e){}
-  await regMedActions(LN);const pend=await LN.getPending();const mine=(pend.notifications||[]).filter(n=>n.id>=100000&&n.id<1000000).map(n=>({id:n.id}));if(mine.length)await LN.cancel({notifications:mine});
+  await regMedActions(LN);const pend=await LN.getPending();const oldMeds=(pend.notifications||[]).filter(n=>n.id>=100000&&n.id<1000000).map(n=>n.id);
   const used=new Set();const list=[];
   (db.medReminders||[]).forEach(r=>{const st=db.stocks.find(x=>x.id===r.stockId);const [hh,mm]=String(r.time||'08:00').split(':');let id=_hashId(String(r.id));while(used.has(id))id++;used.add(id);
    list.push({id,title:'💊 '+(st?.name||'Médicament'),body:(r.dose||1)+' '+(st?.unit||'unité(s)')+' à prendre maintenant',channelId:'meds',smallIcon:'ic_stat_pill',iconColor:'#3D7165',actionTypeId:'MED',extra:{rid:r.id},schedule:{on:{hour:+hh||0,minute:+mm||0},allowWhileIdle:true}})});
+  const keep=new Set(list.map(n=>n.id)),stale=oldMeds.filter(id=>!keep.has(id)).map(id=>({id}));if(stale.length)await LN.cancel({notifications:stale});
   if(list.length)await LN.schedule({notifications:list})}catch(e){window._ntErr=String(e&&e.message||e)}};
  if(now)return run();_ntTimer=setTimeout(run,800);return Promise.resolve()}
 let _tkTimer=null;
 function scheduleNativeTasks(ask){const LN=nativeNotif();if(!LN)return;clearTimeout(_tkTimer);
  _tkTimer=setTimeout(async()=>{try{let perm=await LN.checkPermissions();if(perm.display!=='granted'&&ask)perm=await LN.requestPermissions();if(perm.display!=='granted')return;
   try{await LN.createChannel({id:'tasks',name:'Rappels de tâches',description:'Rappels pour les tâches à faire',importance:4,visibility:1,vibration:true})}catch(e){}
-  await regMedActions(LN);const pend=await LN.getPending();const mine=(pend.notifications||[]).filter(n=>n.id>=1000000).map(n=>({id:n.id}));if(mine.length)await LN.cancel({notifications:mine});
+  await regMedActions(LN);const pend=await LN.getPending();const oldTasks=(pend.notifications||[]).filter(n=>n.id>=1000000).map(n=>n.id);
   const used=new Set(),list=[],now=Date.now();
   (db.tasks||[]).forEach(t=>{if(t.done||!t.rdate)return;const [hh,mm]=String(t.rtime||'09:00').split(':');const at=new Date(t.rdate+'T'+String(hh).padStart(2,'0')+':'+String(mm||'00').padStart(2,'0')+':00');if(isNaN(at)||at.getTime()<=now+5000)return;
    let id=1000000+_hashId(String(t.id))%900000;while(used.has(id))id++;used.add(id);
    list.push({id,title:'✅ '+t.name,body:t.priority==='Haute'?'Tâche prioritaire à faire':'Une tâche à faire',channelId:'tasks',smallIcon:'ic_stat_task',iconColor:'#3D7165',actionTypeId:'TASK',extra:{tid:t.id},schedule:{at,allowWhileIdle:true}})});
+  const keepT=new Set(list.map(n=>n.id)),staleT=oldTasks.filter(id=>!keepT.has(id)).map(id=>({id}));if(staleT.length)await LN.cancel({notifications:staleT});
   if(list.length)await LN.schedule({notifications:list})}catch(e){window._ntErr=String(e&&e.message||e)}},600)}
 function enableMedNotifications(){
  const LN=nativeNotif();if(LN){(async()=>{try{let p=await LN.checkPermissions();if(p.display!=='granted')p=await LN.requestPermissions();if(p.display!=='granted'){showToast('Notifications refusées : autorise-les dans les réglages Android');return}

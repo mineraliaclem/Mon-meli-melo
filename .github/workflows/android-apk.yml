@@ -58,6 +58,13 @@ jobs:
           PY
       - name: Icône de notification
         run: cp -r android-res/. android/app/src/main/res/
+      - name: Fond de l'appli au lancement (pas d'écran noir)
+        run: |
+          R=android/app/src/main/res
+          echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="app_bg">#FAF9F5</color></resources>' > $R/values/app_bg.xml
+          sed -i 's#@drawable/splash#@color/app_bg#g' $R/values/styles.xml
+          sed -i 's#</style>#    <item name="android:windowBackground">@color/app_bg</item>\n    </style>#' $R/values/styles.xml
+          cat $R/values/styles.xml
       - name: Clé de signature fixe
         run: mkdir -p ~/.android && cp android-signing/debug.keystore ~/.android/debug.keystore
       - name: Numéro de version croissant

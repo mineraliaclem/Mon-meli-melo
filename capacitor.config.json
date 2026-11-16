@@ -14,5 +14,6 @@
     "CapacitorHttp": {
       "enabled": true
     }
-  }
+  },
+  "backgroundColor": "#faf9f5"
 }
