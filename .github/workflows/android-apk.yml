@@ -8,6 +8,7 @@ on:
       - '.github/workflows/android-apk.yml'
       - 'www/**'
       - 'android-res/**'
+      - 'android-native/**'
       - 'android-signing/**'
 permissions:
   contents: write
@@ -96,11 +97,25 @@ jobs:
           test "$EXPECTED" = "$GOT"
       - name: Renommer
         run: cp android/app/build/outputs/apk/debug/app-debug.apk Mon-meli-melo.apk
+      - name: Version SANS ouverture (boutons de notification en arrière-plan)
+        id: quick
+        continue-on-error: true
+        run: |
+          python3 android-native/patch_quick.py
+          cd android && ./gradlew assembleDebug --no-daemon
+          cd ..
+          GOT=$(keytool -printcert -jarfile android/app/build/outputs/apk/debug/app-debug.apk | grep 'SHA256:' | head -1 | sed 's/.*SHA256: //')
+          EXPECTED=$(keytool -list -v -keystore android-signing/debug.keystore -storepass android | grep 'SHA256:' | head -1 | sed 's/.*SHA256: //')
+          test "$EXPECTED" = "$GOT"
+          cp android/app/build/outputs/apk/debug/app-debug.apk Mon-meli-melo-sans-ouverture.apk
       - name: Publier le fichier à télécharger
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android
           name: Mon méli-mélo (Android)
           body: Dernière version de l'appli Android. Télécharge Mon-meli-melo.apk et ouvre-le sur ton téléphone.
-          files: Mon-meli-melo.apk
+          files: |
+            Mon-meli-melo.apk
+            Mon-meli-melo-sans-ouverture.apk
+          fail_on_unmatched_files: false
           make_latest: true
